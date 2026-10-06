@@ -117,7 +117,7 @@
     .company-table td.text-left { text-align: left; }
     .loading-text { text-align: center; padding: 40px; color: var(--muted); font-weight: bold; }
 
-    /* ★ 캘린더 스타일 추가 ★ */
+    /* 캘린더 스타일 */
     .calendar-wrap { max-width: 800px; margin: 0 auto 50px auto; background: #fff; border-radius: 12px; box-shadow: 0 5px 20px rgba(11,42,74,0.05); padding: 25px; border: 1px solid var(--line); }
     .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
     .calendar-header h3 { color: var(--navy); font-size: 1.5rem; font-weight: 900; margin: 0; }
@@ -133,12 +133,12 @@
     .event-badge { display: block; text-align: center; font-size: 0.75rem; font-weight: 700; padding: 4px; margin-top: 4px; border-radius: 4px; color: #fff; word-break: keep-all; }
     
     /* 확장형 타입별 색상 설정 영역 */
-    .event-deadline { background-color: var(--orange); }   /* 마감일 */
-    .event-training { background-color: var(--teal); }     /* 사전교육 */
-    .event-company { background-color: var(--blue); }      /* 기업모집 */
-    .event-interview { background-color: var(--navy); }    /* 면접/매칭 */
-    .event-notice { background-color: #d32f2f; }           /* 중요공지 */
-    .event-default { background-color: var(--muted); }     /* 그 외 기타 */
+    .event-deadline { background-color: var(--orange); }   
+    .event-training { background-color: var(--teal); }     
+    .event-company { background-color: var(--blue); }      
+    .event-interview { background-color: var(--navy); }    
+    .event-notice { background-color: #d32f2f; }           
+    .event-default { background-color: var(--muted); }     
 
     footer { background: var(--navy); color: #fff; padding: 40px 20px; font-size: 0.9rem; text-align: center; margin-top: auto; }
     footer .org { font-size: 1.4rem; font-weight: 900; margin-bottom: 10px; color: var(--teal); }
@@ -276,7 +276,7 @@
         <div class="loading-text">데이터를 불러오는 중입니다... ⏳</div>
       </div>
 
-      <!-- ★ 캘린더 영역 ★ -->
+      <!-- 캘린더 영역 -->
       <h2 class="section-title" style="margin-top: 50px;">주요 일정 안내</h2>
       <p style="font-size: 0.95rem; color: var(--muted); margin-bottom: 15px;">* 사전 직무교육 및 마감 일정을 확인해 주세요.</p>
       
@@ -323,8 +323,9 @@
   </footer>
 
   <script>
-    // ★ 새로 제공해주신 Apps Script 배포 URL 적용 ★
-    const sheetApiUrl = "https://script.google.com/macros/s/AKfycbxgJL1bQcXf8ID6MQOf21CmAStZyeSgBj6MYLtw3L09V9et8WmC2_ZiiJ1N0z_o5_Q/exec";
+    // ★ 기업 목록 및 일정 배포 URL 분리 반영 ★
+    const companyApiUrl = "https://script.google.com/macros/s/AKfycbzViF56FoxcjoUeAM5lfjs6yrXHmsF9TGKghyuI9eeZxCtLEO_7LWKo2SzQMh0oAbtXRg/exec";
+    const scheduleApiUrl = "https://script.google.com/macros/s/AKfycbxgJL1bQcXf8ID6MQOf21CmAStZyeSgBj6MYLtw3L09V9et8WmC2_ZiiJ1N0z_o5_Q/exec";
 
     let fetchedScheduleData = {}; 
     let currentDate = new Date(); 
@@ -339,9 +340,10 @@
       
       window.scrollTo({ top: 0, behavior: 'smooth' });
 
-      // 인턴 페이지에 들어가면 데이터 연동(기업목록 + 캘린더) 통합 호출
+      // 인턴 페이지에 들어가면 데이터 연동(기업목록 + 캘린더) 호출
       if (pageId === 'intern' && document.getElementById('company-list-container').innerHTML.includes('불러오는 중')) {
-        loadDataFromSheet();
+        loadCompanyData();
+        loadScheduleData();
       }
       
       if (pageId === 'home') {
@@ -387,62 +389,71 @@
 
     window.onload = () => { runCounters(); };
 
-    // 구글 시트 데이터 (기업 목록 + 캘린더 일정) 동시에 불러오기
-    async function loadDataFromSheet() {
+    // 1. 기업 목록 데이터 불러오기
+    async function loadCompanyData() {
       const container = document.getElementById('company-list-container');
       try {
-        const response = await fetch(sheetApiUrl, { method: "GET", redirect: "follow" });
+        const response = await fetch(companyApiUrl, { method: "GET", redirect: "follow" });
         if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
         const result = await response.json();
 
-        if (result.status === "success") {
-          
-          // [1] 기업 목록 렌더링
-          if(result.data && result.data.length > 0) {
-            let tableHTML = `
-              <table class="company-table">
-                <thead>
-                  <tr>
-                    <th>기업명</th>
-                    <th>지역</th>
-                    <th>근무지</th>
-                    <th>채용 직무</th>
-                  </tr>
-                </thead>
-                <tbody>
-            `;
-            result.data.forEach(item => {
-              tableHTML += `
+        if (result.status === "success" && result.data && result.data.length > 0) {
+          let tableHTML = `
+            <table class="company-table">
+              <thead>
                 <tr>
-                  <td class="text-left"><strong>${item["기업명"] || "-"}</strong></td>
-                  <td>${item["지역"] || "-"}</td>
-                  <td class="text-left" style="font-size:0.95rem; color:var(--muted);">${item["근무지"] || "-"}</td>
-                  <td class="text-left">${item["채용 직무"] || "-"}</td>
+                  <th>기업명</th>
+                  <th>지역</th>
+                  <th>근무지</th>
+                  <th>채용 직무</th>
                 </tr>
-              `;
-            });
-            tableHTML += `</tbody></table>`;
-            container.innerHTML = tableHTML;
-          } else {
-            container.innerHTML = `<div class="loading-text">현재 등록된 모집 기업이 없습니다.</div>`;
-          }
-
-          // [2] 캘린더 데이터 정리 및 렌더링
-          if(result.schedules) {
-            fetchedScheduleData = {}; 
-            result.schedules.forEach(item => {
-              if(!fetchedScheduleData[item.date]) {
-                fetchedScheduleData[item.date] = [];
-              }
-              fetchedScheduleData[item.date].push({ title: item.title, type: item.type });
-            });
-            renderCalendar(); 
-          }
+              </thead>
+              <tbody>
+          `;
+          result.data.forEach(item => {
+            tableHTML += `
+              <tr>
+                <td class="text-left"><strong>${item["기업명"] || "-"}</strong></td>
+                <td>${item["지역"] || "-"}</td>
+                <td class="text-left" style="font-size:0.95rem; color:var(--muted);">${item["근무지"] || "-"}</td>
+                <td class="text-left">${item["채용 직무"] || "-"}</td>
+              </tr>
+            `;
+          });
+          tableHTML += `</tbody></table>`;
+          container.innerHTML = tableHTML;
+        } else {
+          container.innerHTML = `<div class="loading-text">현재 등록된 모집 기업이 없습니다.</div>`;
         }
       } catch (error) {
-        console.error("데이터 연동 실패 상세 로그:", error);
+        console.error("기업 데이터 연동 실패:", error);
         container.innerHTML = `<div class="loading-text" style="color: #d32f2f;">시스템 점검 중입니다. 원활한 서비스 이용을 위해 잠시 후 새로고침(F5) 해주세요.</div>`;
-        document.getElementById('calendar-body').innerHTML = `<div class="loading-text" style="grid-column: span 7;">일정을 불러올 수 없습니다.</div>`;
+      }
+    }
+
+    // 2. 캘린더 일정 데이터 불러오기
+    async function loadScheduleData() {
+      const calendarBody = document.getElementById('calendar-body');
+      try {
+        const response = await fetch(scheduleApiUrl, { method: "GET", redirect: "follow" });
+        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+        const result = await response.json();
+
+        if (result.status === "success" && result.schedules) {
+          fetchedScheduleData = {}; 
+          result.schedules.forEach(item => {
+            if(!fetchedScheduleData[item.date]) {
+              fetchedScheduleData[item.date] = [];
+            }
+            fetchedScheduleData[item.date].push({ title: item.title, type: item.type });
+          });
+          renderCalendar(); 
+        } else {
+          calendarBody.innerHTML = `<div class="loading-text" style="grid-column: span 7;">등록된 일정이 없습니다.</div>`;
+        }
+      } catch (error) {
+        console.error("일정 데이터 연동 실패:", error);
+        calendarBody.innerHTML = `<div class="loading-text" style="grid-column: span 7; color: #d32f2f;">일정을 불러올 수 없습니다.</div>`;
       }
     }
 
@@ -472,7 +483,6 @@
         let eventsHTML = '';
         if (fetchedScheduleData[dateString]) {
           fetchedScheduleData[dateString].forEach(event => {
-            // 구글 시트에 적힌 type을 소문자로 변환하여 CSS 클래스로 사용
             const typeClass = event.type ? event.type.toLowerCase().trim() : 'default';
             const eventClass = 'event-' + typeClass;
             eventsHTML += `<span class="event-badge ${eventClass}">${event.title}</span>`;
