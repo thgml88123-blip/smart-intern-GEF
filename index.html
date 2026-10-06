@@ -175,7 +175,8 @@
   </footer>
 
   <script>
-    const sheetApiUrl = "https://script.google.com/macros/s/AKfycbzViF56FoxcjoUeAM5lfjs6yrXHmsF9TGKghyuI9eeZxCtLEO_7LWKo2SzQMh0oAbtXRg/exec"; 
+    // 새로 발급받은 URL 적용
+    const sheetApiUrl = "https://script.google.com/macros/s/AKfycbzQqowVGUKE4B1WlJ6tAJc8mk93ttJfoFHhFa-aHhKCXFwxaN0zXXVn1EwcH_wvHuuYFQ/exec"; 
 
     function navigate(pageId) {
       document.querySelectorAll('.page-section').forEach(el => el.classList.remove('active'));
@@ -199,10 +200,16 @@
     async function loadCompanyData() {
       const container = document.getElementById('company-list-container');
       try {
-        const response = await fetch(sheetApiUrl);
+        // redirect: "follow"를 추가하여 구글의 자동 주소 전환을 안전하게 처리
+        const response = await fetch(sheetApiUrl, { method: "GET", redirect: "follow" });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
         const result = await response.json();
 
-        if (result.status === "success" && result.data.length > 0) {
+        if (result.status === "success" && result.data && result.data.length > 0) {
           let tableHTML = `
             <table class="company-table">
               <thead>
@@ -242,8 +249,8 @@
           container.innerHTML = `<div class="loading-text">현재 등록된 모집 기업이 없습니다.</div>`;
         }
       } catch (error) {
-        console.error("데이터 로딩 실패:", error);
-        container.innerHTML = `<div class="loading-text" style="color: red;">데이터를 불러오는 데 실패했습니다. 잠시 후 다시 시도해 주세요.</div>`;
+        console.error("데이터 연동 실패 상세 로그:", error);
+        container.innerHTML = `<div class="loading-text" style="color: #d32f2f;">시스템 점검 중입니다. 원활한 서비스 이용을 위해 잠시 후 새로고침(F5) 해주세요.</div>`;
       }
     }
   </script>
